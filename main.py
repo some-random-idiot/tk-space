@@ -85,6 +85,28 @@ class ShipMovementKeyReleasedHandler(GameKeyboardHandler):
             super().handle(event)
 
 
+class StatusWithText:
+    def __init__(self, app, x, y, text_template, default_value=0):
+        self.x = x
+        self.y = y
+        self.text_template = text_template
+        self._value = default_value
+        self.label_text = Text(app, '', x, y)
+        self.update_label()
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        self._value = v
+        self.update_label()
+
+    def update_label(self):
+        self.label_text.set_text(self.text_template % self.value)
+
+
 class SpaceGame(GameApp):
     def init_game(self):
         self.ship = Ship(self, CANVAS_WIDTH // 2, CANVAS_HEIGHT // 2)
@@ -93,15 +115,11 @@ class SpaceGame(GameApp):
         self.level_text = Text(self, '', 100, 580)
         self.update_level_text()
 
-        self.score = 0
         self.score_wait = 0
-        self.score_text = Text(self, '', 100, 20)
-        self.update_score_text()
+        self.score = StatusWithText(self, 100, 20, 'Score: %d', 0)
 
-        self.bomb_power = BOMB_FULL_POWER
+        self.bomb_power = StatusWithText(self, 700, 20, 'Bomb: %d', BOMB_FULL_POWER)
         self.bomb_wait = 0
-        self.bomb_power_text = Text(self, '', 700, 20)
-        self.update_bomb_power_text()
 
         self.elements.append(self.ship)
 
@@ -131,29 +149,22 @@ class SpaceGame(GameApp):
         return len(self.bullets)
 
     def bomb(self):
-        if self.bomb_power == BOMB_FULL_POWER:
-            self.bomb_power = 0
+        if self.bomb_power.value == BOMB_FULL_POWER:
+            self.bomb_power.value = 0
+            self.bomb_shockwave_draw()
+            self.destroy_enemies()
 
-            self.bomb_canvas_id = self.canvas.create_oval(
-                self.ship.x - BOMB_RADIUS, 
-                self.ship.y - BOMB_RADIUS,
-                self.ship.x + BOMB_RADIUS, 
-                self.ship.y + BOMB_RADIUS
-            )
+    def bomb_shockwave_draw(self):
+        self.bomb_canvas_id = self.canvas.create_oval(self.ship.x - BOMB_RADIUS,
+                                self.ship.y - BOMB_RADIUS,
+                                self.ship.x + BOMB_RADIUS,
+                                self.ship.y + BOMB_RADIUS)
+        self.after(200, lambda: self.canvas.delete(self.bomb_canvas_id))
 
-            self.after(200, lambda: self.canvas.delete(self.bomb_canvas_id))
-
-            for e in self.enemies:
-                if self.ship.distance_to(e) <= BOMB_RADIUS:
-                    e.to_be_deleted = True
-
-            self.update_bomb_power_text()
-
-    def update_score_text(self):
-        self.score_text.set_text('Score: %d' % self.score)
-
-    def update_bomb_power_text(self):
-        self.bomb_power_text.set_text('Power: %d%%' % self.bomb_power)
+    def destroy_enemies(self):
+        for e in self.enemies:
+            if self.ship.distance_to(e) <= BOMB_RADIUS:
+                e.to_be_deleted = True
 
     def update_level_text(self):
         self.level_text.set_text('Level: %d' % self.level)
@@ -161,16 +172,14 @@ class SpaceGame(GameApp):
     def update_score(self):
         self.score_wait += 1
         if self.score_wait >= SCORE_WAIT:
-            self.score += 1
+            self.score.value += 1
             self.score_wait = 0
-            self.update_score_text()
 
     def update_bomb_power(self):
         self.bomb_wait += 1
-        if (self.bomb_wait >= BOMB_WAIT) and (self.bomb_power != BOMB_FULL_POWER):
-            self.bomb_power += 1
+        if (self.bomb_wait >= BOMB_WAIT) and (self.bomb_power.value != BOMB_FULL_POWER):
+            self.bomb_power.value += 1
             self.bomb_wait = 0
-            self.update_bomb_power_text()
 
     def create_enemies(self):
         p = random()
