@@ -125,8 +125,8 @@ class SpaceGame(GameApp):
 
         self.enemies = []
         self.enemy_creation_strategies = [
-            (0.2, StarEnemyGenerationStrategy()),
-            (1.0, EdgeEnemyGenerationStrategy())
+            (0.05, StarEnemyGenerationStrategy()),
+            (0.8, EdgeEnemyGenerationStrategy())
         ]
         self.bullets = []
         self.init_key_handlers()
@@ -188,9 +188,12 @@ class SpaceGame(GameApp):
             if p < prob:
                 enemies = strategy.generate(self, self.ship)
                 break
+            else:
+                enemies = []
 
-        for e in enemies:
-            self.add_enemy(e)
+        if enemies:
+            for e in enemies:
+                self.add_enemy(e)
 
     def pre_update(self):
         if random() < 0.1:
